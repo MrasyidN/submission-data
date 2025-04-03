@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-
+import time 
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -36,33 +36,45 @@ def fetch_page_content(url):
         return response.content
     
     except requests.exceptions.RequestException as e:
-        print(f"error saat mengambil {url}: {e}")
+        print(f"Error saat mengambil {url}: {e}")
         return None
 
 # melakukan scraping data pada url
-def scrape_fashion_data(url):
-    # melakukan scraping
-    content = fetch_page_content(url)
-    if not content:
-        return []
-    
-    soup = BeautifulSoup(content, 'html.parser')
+def scrape_fashion_data(base_url, delay=2):
     data = []
-    # berdasarkan kontainer
-    product_container = soup.find('div',class_='collection-grid', id='collectionList')
+    page_number = 1
+    current_url = base_url 
 
-    if product_container:
-        # berdasarkan class product-details
-        products = product_container.find_all('div', class_='product-details')
-        for product_details in products:
-            # melakukah ekstrasi data pada setiap variabel yang telah ditentukan pada def extract
-            fashion_data  = extract_fashion_data(product_details)
-            data.append(fashion_data)
+    while True:
+        print(f"Scraping halaman: {current_url}")
+        
+        content = fetch_page_content(current_url)
+        if not content:
+            break 
+
+        soup = BeautifulSoup(content, "html.parser")
+        product_container = soup.find('div', class_='collection-grid', id='collectionList')
+
+        if product_container:
+            products = product_container.find_all('div', class_='product-details')
+            for product_details in products:
+                fashion_data = extract_fashion_data(product_details)
+                data.append(fashion_data)
+
+        # Cek apakah ada tombol "Next"
+        next_button = soup.find('li', class_='page-item next')
+        if next_button:
+            page_number += 1
+            current_url = f"{base_url}page{page_number}" 
+            time.sleep(delay)
+        else:
+            break  # berhenti jika tidak ada halmana selanjutnya
+
     return data
 
 def main():
-    url = 'https://fashion-studio.dicoding.dev/'
-    fashion_data = scrape_fashion_data(url)
+    base_url = 'https://fashion-studio.dicoding.dev/'
+    fashion_data = scrape_fashion_data(base_url)
 
     # menampilkan hasil scrape pada bentuk pandas
     if fashion_data:
